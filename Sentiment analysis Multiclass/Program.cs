@@ -23,8 +23,8 @@ namespace Sentiment_analysis_Multiclass
         static void Main(string[] args)
         {
             _mLContext = new MLContext(seed:0);
-            _trainingDataView = _mLContext.Data.LoadFromTextFile<Sentiment_Analysis>(_trainDataPath,separatorChar:',', hasHeader: true);
-            var Split = _mLContext.Data.TrainTestSplit(_trainingDataView, testFraction: 0.2, samplingKeyColumnName: default);
+            _trainingDataView = _mLContext.Data.LoadFromTextFile<Sentiment_Analysis>(_trainDataPath, hasHeader: true);
+            var Split = _mLContext.Data.TrainTestSplit(_trainingDataView, testFraction: 0.015, samplingKeyColumnName: default);
             train = Split.TrainSet;
             test = Split.TestSet;
 
@@ -50,6 +50,7 @@ namespace Sentiment_analysis_Multiclass
             var trainingPipline = pipeline.Append(_mLContext.MulticlassClassification.Trainers.SdcaMaximumEntropy("Label", "Features"))
                 .Append(_mLContext.Transforms.Conversion.MapKeyToValue("PredictedLabel"));
             _trainedmodel = trainingPipline.Fit(trainingDataView);
+
             _predEngine = _mLContext.Model.CreatePredictionEngine<Sentiment_Analysis, Sentiments>(_trainedmodel);
             Sentiment_Analysis se = new Sentiment_Analysis()
             {
@@ -77,6 +78,14 @@ namespace Sentiment_analysis_Multiclass
         private static void SaveModelAsFile(MLContext mLContext, DataViewSchema trainingDataViewSchema, ITransformer model)
         {
             _mLContext.Model.Save(model, trainingDataViewSchema, _modelPath);
+        }
+        private static void PredictIssue() 
+        {
+            ITransformer loadedModel = _mLContext.Model.Load(_modelPath, out var modelInputSchema);
+            Sentiment_Analysis singlesentiment = new Sentiment_Analysis() { Phrase = "" };
+            _predEngine = _mLContext.Model.CreatePredictionEngine<Sentiment_Analysis, Sentiments>(loadedModel);
+            var prediction = _predEngine.Predict(singlesentiment);
+            Console.WriteLine($"{prediction.Sentiment}");
         }
 
     }
